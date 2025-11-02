@@ -1,4 +1,4 @@
-# Contenido optimizado para: app.py - Versión ISO 9241-143
+# Contenido final y optimizado para: app.py
 
 import streamlit as st
 from modules.excel_parser import procesar_excel
@@ -149,38 +149,6 @@ st.markdown("""
         background: white;
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     }
-    
-    /* Estilo especial para D4 - Factor Multiplicador Crítico */
-    .factor-multiplicador {
-        background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%) !important;
-        border: 2px solid #d97706 !important;
-        color: white !important;
-        font-weight: bold !important;
-        box-shadow: 0 4px 8px rgba(217, 119, 6, 0.3) !important;
-        animation: pulse-glow 2s infinite !important;
-    }
-    
-    .factor-multiplicador .stSelectbox > div > div {
-        background: rgba(255, 255, 255, 0.95) !important;
-        border-radius: 6px !important;
-        color: #1f2937 !important;
-        font-weight: 600 !important;
-    }
-    
-    @keyframes pulse-glow {
-        0% { box-shadow: 0 4px 8px rgba(217, 119, 6, 0.3); }
-        50% { box-shadow: 0 6px 12px rgba(217, 119, 6, 0.5); }
-        100% { box-shadow: 0 4px 8px rgba(217, 119, 6, 0.3); }
-    }
-    
-    /* Estilo para otros factores D (complementarios) */
-    .factor-complementario {
-        background: linear-gradient(135deg, #e0f2fe 0%, #b3e5fc 100%) !important;
-        border-left: 4px solid #0288d1 !important;
-        border-radius: 8px !important;
-        padding: 1rem !important;
-        margin: 0.5rem 0 !important;
-    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -279,14 +247,11 @@ def crear_grafico_riesgo(puntaje_izq, puntaje_der, titulo="Nivel de Riesgo"):
         color = "#ef4444"  # Rojo
         nivel = "ALTO"
     
-    # Obtener nivel de acción
-    nivel_accion = get_nivel_accion(puntaje_max)
-    
     fig = go.Figure(go.Indicator(
         mode = "gauge+number+delta",
         value = puntaje_max,
         domain = {'x': [0, 1], 'y': [0, 1]},
-        title = {'text': f"{titulo}<br><span style='font-size:0.8em;color:{color}'>{nivel}</span><br><span style='font-size:0.7em;color:{color}'>Nivel de acción {nivel_accion}</span>"},
+        title = {'text': f"{titulo}<br><span style='font-size:0.8em;color:{color}'>{nivel}</span>"},
         delta = {'reference': 11, 'increasing': {'color': color}},
         gauge = {
             'axis': {'range': [None, 30]},
@@ -307,118 +272,14 @@ def crear_grafico_riesgo(puntaje_izq, puntaje_der, titulo="Nivel de Riesgo"):
     fig.update_layout(height=250, font={'color': "#374151", 'family': "Arial"})
     return fig
 
-def calcular_puntajes_acumulados(results):
-    """Calcula puntajes parciales y acumulados por sección"""
-    # Sección A
-    a_izq = results['a1']['izq']['puntaje'] + results['a2']['izq']['puntaje']
-    a_der = results['a1']['der']['puntaje'] + results['a2']['der']['puntaje']
-    
-    # Sección B
-    b_izq = results['b']['izq']['puntaje']
-    b_der = results['b']['der']['puntaje']
-    
-    # Sección C
-    c_compartido = results['c1']['puntaje'] + results['c2']['puntaje']
-    c_izq_especifico = results['c3']['izq']['puntaje'] + results['c4']['izq']['puntaje'] + results['c5']['izq']['puntaje']
-    c_der_especifico = results['c3']['der']['puntaje'] + results['c4']['der']['puntaje'] + results['c5']['der']['puntaje']
-    c_izq_total = c_compartido + c_izq_especifico
-    c_der_total = c_compartido + c_der_especifico
-    
-    # Sección D (factores aditivos)
-    d_compartido = results['d1']['puntaje'] + results['d2']['puntaje']
-    d_izq_especifico = results['d3']['izq']['puntaje']
-    d_der_especifico = results['d3']['der']['puntaje']
-    d_izq_total = d_compartido + d_izq_especifico
-    d_der_total = d_compartido + d_der_especifico
-    
-    # Acumulados progresivos (antes del multiplicador D4)
-    acum_a_izq = a_izq
-    acum_a_der = a_der
-    
-    acum_ab_izq = a_izq + b_izq
-    acum_ab_der = a_der + b_der
-    
-    acum_abc_izq = a_izq + b_izq + c_izq_total
-    acum_abc_der = a_der + b_der + c_der_total
-    
-    acum_abcd_izq = a_izq + b_izq + c_izq_total + d_izq_total
-    acum_abcd_der = a_der + b_der + c_der_total + d_der_total
-    
-    return {
-        'secciones': {
-            'a': {'izq': a_izq, 'der': a_der},
-            'b': {'izq': b_izq, 'der': b_der},
-            'c': {'izq': c_izq_total, 'der': c_der_total},
-            'd': {'izq': d_izq_total, 'der': d_der_total}
-        },
-        'acumulados': {
-            'a': {'izq': acum_a_izq, 'der': acum_a_der},
-            'ab': {'izq': acum_ab_izq, 'der': acum_ab_der},
-            'abc': {'izq': acum_abc_izq, 'der': acum_abc_der},
-            'abcd': {'izq': acum_abcd_izq, 'der': acum_abcd_der}
-        },
-        'multiplicador': results['d4']['multiplicador'],
-        'final': {
-            'izq': acum_abcd_izq * results['d4']['multiplicador'],
-            'der': acum_abcd_der * results['d4']['multiplicador']
-        }
-    }
-
-def get_nivel_accion(puntaje):
-    """Determina el nivel de acción basado en el puntaje de exposición"""
-    puntaje = round(puntaje)
-    if puntaje <= 3:
-        return 0
-    elif puntaje <= 7:
-        return 1
-    elif puntaje <= 11:
-        return 2
-    elif puntaje <= 15:
-        return 3
-    else:
-        return 4
-
-def mostrar_indicador_acumulado(seccion_nombre, puntaje_seccion_izq, puntaje_seccion_der, 
-                               acumulado_izq, acumulado_der, es_final=False):
-    """Muestra un indicador visual de puntajes parciales y acumulados"""
-    max_seccion = max(puntaje_seccion_izq, puntaje_seccion_der)
-    max_acumulado = max(acumulado_izq, acumulado_der)
-    
-    # Color según el acumulado
-    if max_acumulado <= 11:
-        color_acum = "#10b981"
-        nivel_acum = "Bajo"
-    elif max_acumulado <= 21:
-        color_acum = "#f59e0b"
-        nivel_acum = "Medio"
-    else:
-        color_acum = "#ef4444"
-        nivel_acum = "Alto"
-    
-    if es_final:
-        titulo = f"🎯 **TOTAL FINAL (post-multiplicador)**"
-        subtitulo = f"Puntaje final: **{max_acumulado:.1f}** → Riesgo **{nivel_acum}**"
-    else:
-        titulo = f"📊 **Sección {seccion_nombre.upper()}**"
-        subtitulo = f"Parcial: +{max_seccion} | Acumulado: **{max_acumulado}** → Riesgo **{nivel_acum}**"
-    
-    st.markdown(f"""
-    <div style="background: linear-gradient(90deg, {color_acum}15 0%, {color_acum}25 100%); 
-                border-left: 4px solid {color_acum}; padding: 0.75rem; border-radius: 6px; margin: 0.5rem 0;">
-        <div style="color: #1f2937; font-weight: 600; margin-bottom: 0.25rem;">{titulo}</div>
-        <div style="color: #4b5563; font-size: 0.9rem;">{subtitulo}</div>
-        <div style="display: flex; gap: 1rem; margin-top: 0.5rem; font-size: 0.8rem;">
-            <span>🤚 Izq: Secc.+{puntaje_seccion_izq} | Acum.{acumulado_izq:.1f}</span>
-            <span>🤚 Der: Secc.+{puntaje_seccion_der} | Acum.{acumulado_der:.1f}</span>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
 # Inicializar variables de sesión
 if 'casos_filtrados_procesados' not in st.session_state:
     st.session_state.casos_filtrados_procesados = False
 if 'casos_filtrados' not in st.session_state:
     st.session_state.casos_filtrados = []
+
+# Mostrar sidebar con progreso
+mostrar_sidebar_progreso()
 
 # Mostrar sidebar con progreso
 mostrar_sidebar_progreso()
@@ -433,11 +294,11 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# Layout principal mejorado - Orden lógico corregido
-col_carga_y_datos, col_seleccion_y_evaluacion = st.columns([1, 2])
+# Layout principal mejorado
+col_principal, col_lateral = st.columns([2, 1])
 
-with col_carga_y_datos:
-    # PASO 1: Cargar Matriz TMERT
+with col_lateral:
+    # Tarjeta de carga de archivo
     with st.container():
         st.markdown("### 📁 PASO 1: Cargar Matriz TMERT")
         uploaded_file = st.file_uploader(
@@ -458,7 +319,7 @@ with col_carga_y_datos:
                     st.markdown(f'<div class="status-completed">✅ {len(st.session_state.casos_filtrados)} casos encontrados</div>', 
                                unsafe_allow_html=True)
 
-    # PASO 4: Datos del Evaluador (cuando hay casos seleccionados)
+    # Tarjeta de datos del evaluador
     if st.session_state.get('casos_seleccionados'):
         with st.container():
             st.markdown("### 👤 PASO 4: Datos del Evaluador")
@@ -473,44 +334,49 @@ with col_carga_y_datos:
                 st.markdown('<div class="status-pending">⏳ Completar datos obligatorios</div>', unsafe_allow_html=True)
             
             with st.expander("✍️ Completar Información", expanded=not campos_completos):
-                st.markdown("**Datos Básicos** ⚠️")
-                st.text_input("Nº Informe Técnico*:", 
-                             key="numero_informe",
-                             help="Número único del informe técnico")
-                st.text_input("Nombre Ergónomo*:", 
-                             value="Mauricio Andrés Reyes González", 
-                             key="nombre_ergonomo")
-                st.text_input("RUT Ergónomo*:", 
-                             value="16473734-9", 
-                             key="rut_ergonomo")
-                st.text_input("Correo Ergónomo:", 
-                             value="mauricio.reyes@ejemplo.com", 
-                             key="correo_ergonomo")
-                st.date_input("Fecha de Visita*:", 
-                             format="DD-MM-YYYY", 
-                             key="fecha_visita",
-                             help="Fecha en que se realizó la evaluación en terreno")
+                col_eval1, col_eval2 = st.columns(2)
                 
-                st.markdown("**Información del Centro de Trabajo**")
-                st.selectbox("Reglamento HS:", ["SI", "NO"], key="reglamento_hs")
-                st.selectbox("Depto. Preventivo:", ["SI", "NO"], key="depto_preventivo")
-                st.selectbox("Rol Empresa en CT:", ["Empresa principal", "Contratista"], key="rol_empresa_en_ct")
-                st.selectbox("Comité Paritario:", ["SI", "NO"], key="comite_paritario")
-                st.selectbox("Experto en Prevención:", ["SI", "NO"], key="experto_en_prevencion")
-                st.text_input("Horas Semanales Experto:", key="horas_semanales_experto_empresa")
+                with col_eval1:
+                    st.markdown("**Datos Básicos** ⚠️")
+                    st.text_input("Nº Informe Técnico*:", 
+                                 key="numero_informe",
+                                 help="Número único del informe técnico")
+                    st.text_input("Nombre Ergónomo*:", 
+                                 value="Mauricio Andrés Reyes González", 
+                                 key="nombre_ergonomo")
+                    st.text_input("RUT Ergónomo*:", 
+                                 value="16473734-9", 
+                                 key="rut_ergonomo")
+                    st.text_input("Correo Ergónomo:", 
+                                 value="mauricio.reyes@ejemplo.com", 
+                                 key="correo_ergonomo")
+                    st.date_input("Fecha de Visita*:", 
+                                 format="DD-MM-YYYY", 
+                                 key="fecha_visita",
+                                 help="Fecha en que se realizó la evaluación en terreno")
+                
+                with col_eval2:
+                    st.markdown("**Información del Centro de Trabajo**")
+                    st.selectbox("Reglamento HS:", ["SI", "NO"], key="reglamento_hs")
+                    st.selectbox("Depto. Preventivo:", ["SI", "NO"], key="depto_preventivo")
+                    st.selectbox("Rol Empresa en CT:", ["Empresa principal", "Contratista"], key="rol_empresa_en_ct")
+                    st.selectbox("Comité Paritario:", ["SI", "NO"], key="comite_paritario")
+                    st.selectbox("Experto en Prevención:", ["SI", "NO"], key="experto_en_prevencion")
+                    st.text_input("Horas Semanales Experto:", key="horas_semanales_experto_empresa")
                     
                 st.markdown("**Fechas del Centro de Trabajo**")
-                col_fechas1, col_fechas2 = st.columns(2)
+                col_fechas1, col_fechas2, col_fechas3 = st.columns(3)
                 
                 with col_fechas1:
                     st.date_input("Fecha Inicio CT:", format="DD-MM-YYYY", key="fecha_inicio_ct", value=None)
-                    st.date_input("Fecha Término Conocido CT:", format="DD-MM-YYYY", key="fecha_termino_conocido_ct", value=None)
                 with col_fechas2:
+                    st.date_input("Fecha Término Conocido CT:", format="DD-MM-YYYY", key="fecha_termino_conocido_ct", value=None)
+                with col_fechas3:
                     st.date_input("Fecha Término Informe:", format="DD-MM-YYYY", key="fecha_termino_informe", value=None)
                     
                 st.info("⚠️ Los campos marcados con * son obligatorios para generar el informe.")
 
-        # PASO 5: Generar Informe
+        # Botón de generación de informe mejorado
         casos_seleccionados = st.session_state.get('casos_seleccionados', [])
         
         if casos_seleccionados:
@@ -545,133 +411,126 @@ with col_carga_y_datos:
 
                 if casos_seleccionados and not campos_completos:
                     st.error("⚠️ Completa todos los datos obligatorios del evaluador para generar el informe.")
-                
-                # Lógica de generación de informe
-                if generar_btn:
-                    with st.spinner("🔄 Generando informe técnico..."):
-                        # Calcular evaluaciones ART con datos extendidos
-                        casos_evaluados = []
-                        for c in casos_seleccionados:
-                            art_eval = calculate_art_evaluation(st.session_state, c['nro'])
-                            # Importar la función para calcular máximos
-                            from modules.art_logic import calcular_maximos_caso
-                            maximos = calcular_maximos_caso(art_eval)
-                            
-                            # Combinar todos los datos del caso
-                            caso_completo = {
-                                **c,  # Datos del caso original
-                                'art': art_eval,  # Evaluación ART completa
-                                **maximos  # Agregar campos máximos calculados
-                            }
-                            casos_evaluados.append(caso_completo)
-                        
-                        # Agrupar casos por nivel de riesgo para las conclusiones
-                        casos_por_riesgo = {
-                            'alto': [],
-                            'medio': [],
-                            'bajo': []
-                        }
-                        
-                        for caso in casos_evaluados:
-                            nivel = caso['nivel_riesgo_maximo'].lower()
-                            if nivel == 'alto':
-                                casos_por_riesgo['alto'].append(caso)
-                            elif nivel == 'medio':
-                                casos_por_riesgo['medio'].append(caso)
-                            else:
-                                casos_por_riesgo['bajo'].append(caso)
-                        
-                        # Crear textos dinámicos para conclusiones con numeración consecutiva
-                        secciones_conclusiones = []
-                        
-                        # Ordenar por prioridad: Alto -> Medio -> Bajo
-                        if len(casos_por_riesgo['alto']) > 0:
-                            secciones_conclusiones.append({
-                                'numero': len(secciones_conclusiones) + 1,
-                                'nivel': 'alto',
-                                'nivel_accion': '4',
-                                'casos': casos_por_riesgo['alto'],
-                                'texto': 'riesgo alto (nivel de acción 4), es indispensable intervenir la situación de trabajo enfatizando y priorizando la disminución de la exposición laboral a aquellos factores que poseen una mayor valoración según la aplicación del método de evaluación.'
-                            })
-                        
-                        if len(casos_por_riesgo['medio']) > 0:
-                            secciones_conclusiones.append({
-                                'numero': len(secciones_conclusiones) + 1,
-                                'nivel': 'medio',
-                                'nivel_accion': '3',
-                                'casos': casos_por_riesgo['medio'],
-                                'texto': 'riesgo medio (nivel de acción 3), es indispensable intervenir la situación de trabajo enfatizando y priorizando la disminución de la exposición laboral a aquellos factores que poseen una mayor valoración según la aplicación del método de evaluación.'
-                            })
-                        
-                        if len(casos_por_riesgo['bajo']) > 0:
-                            secciones_conclusiones.append({
-                                'numero': len(secciones_conclusiones) + 1,
-                                'nivel': 'bajo',
-                                'nivel_accion': '0, 1 y 2',
-                                'casos': casos_por_riesgo['bajo'],
-                                'texto': 'riesgo bajo (nivel de acción 0, 1 y 2), entonces corresponde realizar una revisión periódica de la tarea cada 3 años.'
-                            })
-                        
-                        conclusiones = {
-                            'tiene_riesgo_alto': len(casos_por_riesgo['alto']) > 0,
-                            'tiene_riesgo_medio': len(casos_por_riesgo['medio']) > 0,
-                            'tiene_riesgo_bajo': len(casos_por_riesgo['bajo']) > 0,
-                            'casos_riesgo_alto': casos_por_riesgo['alto'],
-                            'casos_riesgo_medio': casos_por_riesgo['medio'],
-                            'casos_riesgo_bajo': casos_por_riesgo['bajo'],
-                            'secciones': secciones_conclusiones
-                        }
-                        
-                        contexto = {
-                            # Variables nivel raíz (según plantilla)
-                            'numero_informe_tecnico': st.session_state.numero_informe,
-                            'nombre_ergonomo': st.session_state.nombre_ergonomo,
-                            'rut_ergonomo': st.session_state.rut_ergonomo,
-                            'correo_ergonomo': st.session_state.get('correo_ergonomo', 'mauricio.reyes@ejemplo.com'),
-                            'fecha_actual_reporte': datetime.now().strftime("%d-%m-%Y"),
-                            'fecha_visita_empresa': st.session_state.fecha_visita.strftime("%d-%m-%Y"),
-                            
-                            # Variables adicionales del centro de trabajo
-                            'reglamento_hs': st.session_state.get('reglamento_hs', 'NO'),
-                            'depto_preventivo': st.session_state.get('depto_preventivo', 'NO'),
-                            'rol_empresa_en_ct': st.session_state.get('rol_empresa_en_ct', 'Empresa principal'),
-                            'comite_paritario': st.session_state.get('comite_paritario', 'NO'),
-                            'experto_en_prevencion': st.session_state.get('experto_en_prevencion', 'NO'),
-                            'horas_semanales_experto_empresa': st.session_state.get('horas_semanales_experto_empresa', ''),
-                            'fecha_inicio_ct': st.session_state.get('fecha_inicio_ct').strftime("%d-%m-%Y") if st.session_state.get('fecha_inicio_ct') else '',
-                            'fecha_termino_conocido_ct': st.session_state.get('fecha_termino_conocido_ct').strftime("%d-%m-%Y") if st.session_state.get('fecha_termino_conocido_ct') else '',
-                            'fecha_termino_informe': st.session_state.get('fecha_termino_informe').strftime("%d-%m-%Y") if st.session_state.get('fecha_termino_informe') else '',
-                            
-                            # Información general (estructura anidada)
-                            'informacion_general': {
-                                'antecedentes_empresa': st.session_state.datos_generales.get('antecedentes_empresa', {}),
-                                'centro_trabajo': st.session_state.datos_generales.get('centro_trabajo', {}),
-                                'responsable_protocolo': st.session_state.datos_generales.get('responsable_protocolo', {})
-                            },
-                            
-                            # Casos evaluados (nombre que espera la plantilla)
-                            'puestos_trabajo_detalle': casos_evaluados,
-                            'casos_evaluados': casos_evaluados,  # Mantener ambos por compatibilidad
-                            
-                            # Datos para conclusiones dinámicas
-                            'conclusiones': conclusiones
-                        }
-                        informe_bytes = generar_informe(contexto)
-                        if informe_bytes:
-                            st.success("🎉 ¡Informe generado exitosamente!")
-                            fname = f"Informe_ART_{st.session_state.numero_informe}_{datetime.now().strftime('%Y%m%d')}.docx"
-                            st.download_button(
-                                "📥 Descargar Informe Word", 
-                                informe_bytes, 
-                                fname, 
-                                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                                use_container_width=True
-                            )
-                        else:
-                            st.error("❌ Error al generar el informe. Revisa que la plantilla esté en la carpeta 'templates'.")
 
-with col_seleccion_y_evaluacion:
-    # PASO 2: Selección de casos mejorada
+with col_principal:
+        with st.spinner("Generando informe..."):
+            # Calcular evaluaciones ART con datos extendidos
+            casos_evaluados = []
+            for c in casos_seleccionados:
+                art_eval = calculate_art_evaluation(st.session_state, c['nro'])
+                # Importar la función para calcular máximos
+                from modules.art_logic import calcular_maximos_caso
+                maximos = calcular_maximos_caso(art_eval)
+                
+                # Combinar todos los datos del caso
+                caso_completo = {
+                    **c,  # Datos del caso original
+                    'art': art_eval,  # Evaluación ART completa
+                    **maximos  # Agregar campos máximos calculados
+                }
+                casos_evaluados.append(caso_completo)
+            
+            # Agrupar casos por nivel de riesgo para las conclusiones
+            casos_por_riesgo = {
+                'alto': [],
+                'medio': [],
+                'bajo': []
+            }
+            
+            for caso in casos_evaluados:
+                nivel = caso['nivel_riesgo_maximo'].lower()
+                if nivel == 'alto':
+                    casos_por_riesgo['alto'].append(caso)
+                elif nivel == 'medio':
+                    casos_por_riesgo['medio'].append(caso)
+                else:
+                    casos_por_riesgo['bajo'].append(caso)
+            
+            # Crear textos dinámicos para conclusiones con numeración consecutiva
+            secciones_conclusiones = []
+            
+            # Ordenar por prioridad: Alto -> Medio -> Bajo
+            if len(casos_por_riesgo['alto']) > 0:
+                secciones_conclusiones.append({
+                    'numero': len(secciones_conclusiones) + 1,
+                    'nivel': 'alto',
+                    'nivel_accion': '4',
+                    'casos': casos_por_riesgo['alto'],
+                    'texto': 'riesgo alto (nivel de acción 4), es indispensable intervenir la situación de trabajo enfatizando y priorizando la disminución de la exposición laboral a aquellos factores que poseen una mayor valoración según la aplicación del método de evaluación.'
+                })
+            
+            if len(casos_por_riesgo['medio']) > 0:
+                secciones_conclusiones.append({
+                    'numero': len(secciones_conclusiones) + 1,
+                    'nivel': 'medio',
+                    'nivel_accion': '3',
+                    'casos': casos_por_riesgo['medio'],
+                    'texto': 'riesgo medio (nivel de acción 3), es indispensable intervenir la situación de trabajo enfatizando y priorizando la disminución de la exposición laboral a aquellos factores que poseen una mayor valoración según la aplicación del método de evaluación.'
+                })
+            
+            if len(casos_por_riesgo['bajo']) > 0:
+                secciones_conclusiones.append({
+                    'numero': len(secciones_conclusiones) + 1,
+                    'nivel': 'bajo',
+                    'nivel_accion': '0, 1 y 2',
+                    'casos': casos_por_riesgo['bajo'],
+                    'texto': 'riesgo bajo (nivel de acción 0, 1 y 2), entonces corresponde realizar una revisión periódica de la tarea cada 3 años.'
+                })
+            
+            conclusiones = {
+                'tiene_riesgo_alto': len(casos_por_riesgo['alto']) > 0,
+                'tiene_riesgo_medio': len(casos_por_riesgo['medio']) > 0,
+                'tiene_riesgo_bajo': len(casos_por_riesgo['bajo']) > 0,
+                'casos_riesgo_alto': casos_por_riesgo['alto'],
+                'casos_riesgo_medio': casos_por_riesgo['medio'],
+                'casos_riesgo_bajo': casos_por_riesgo['bajo'],
+                'secciones': secciones_conclusiones
+            }
+            
+            contexto = {
+                # Variables nivel raíz (según plantilla)
+                'numero_informe_tecnico': st.session_state.numero_informe,
+                'nombre_ergonomo': st.session_state.nombre_ergonomo,
+                'rut_ergonomo': st.session_state.rut_ergonomo,
+                'correo_ergonomo': st.session_state.get('correo_ergonomo', 'mauricio.reyes@ejemplo.com'),
+                'fecha_actual_reporte': datetime.now().strftime("%d-%m-%Y"),
+                'fecha_visita_empresa': st.session_state.fecha_visita.strftime("%d-%m-%Y"),
+                
+                # Variables adicionales del centro de trabajo
+                'reglamento_hs': st.session_state.get('reglamento_hs', 'NO'),
+                'depto_preventivo': st.session_state.get('depto_preventivo', 'NO'),
+                'rol_empresa_en_ct': st.session_state.get('rol_empresa_en_ct', 'Empresa principal'),
+                'comite_paritario': st.session_state.get('comite_paritario', 'NO'),
+                'experto_en_prevencion': st.session_state.get('experto_en_prevencion', 'NO'),
+                'horas_semanales_experto_empresa': st.session_state.get('horas_semanales_experto_empresa', ''),
+                'fecha_inicio_ct': st.session_state.get('fecha_inicio_ct').strftime("%d-%m-%Y") if st.session_state.get('fecha_inicio_ct') else '',
+                'fecha_termino_conocido_ct': st.session_state.get('fecha_termino_conocido_ct').strftime("%d-%m-%Y") if st.session_state.get('fecha_termino_conocido_ct') else '',
+                'fecha_termino_informe': st.session_state.get('fecha_termino_informe').strftime("%d-%m-%Y") if st.session_state.get('fecha_termino_informe') else '',
+                
+                # Información general (estructura anidada)
+                'informacion_general': {
+                    'antecedentes_empresa': st.session_state.datos_generales.get('antecedentes_empresa', {}),
+                    'centro_trabajo': st.session_state.datos_generales.get('centro_trabajo', {}),
+                    'responsable_protocolo': st.session_state.datos_generales.get('responsable_protocolo', {})
+                },
+                
+                # Casos evaluados (nombre que espera la plantilla)
+                'puestos_trabajo_detalle': casos_evaluados,
+                'casos_evaluados': casos_evaluados,  # Mantener ambos por compatibilidad
+                
+                # Datos para conclusiones dinámicas
+                'conclusiones': conclusiones
+            }
+            informe_bytes = generar_informe(contexto)
+            if informe_bytes:
+                st.success("¡Informe generado!")
+                fname = f"Informe_ART_{st.session_state.numero_informe}_{datetime.now().strftime('%Y%m%d')}.docx"
+                st.download_button("📥 Descargar Informe", informe_bytes, fname, "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+            else:
+                st.error("Error al generar. Revisa la plantilla en la carpeta 'templates'.")
+
+with col_principal:
+    # Sección de selección de casos mejorada
     with st.container():
         st.markdown("### 📋 PASO 2: Seleccionar Casos a Evaluar")
         
@@ -732,7 +591,7 @@ with col_seleccion_y_evaluacion:
                 if selection_states.get(c['nro'])
             ]
 
-    # PASO 3: Sección de evaluación ART mejorada
+    # Sección de evaluación ART mejorada
     if st.session_state.get('casos_seleccionados'):
         st.markdown("---")
         with st.container():
@@ -781,10 +640,6 @@ with col_seleccion_y_evaluacion:
                     # Calcular y mostrar resultados
                     results = calculate_art_evaluation(st.session_state, nro)
                     
-                    # ✨ NUEVO: Mostrar progreso de evaluación por secciones
-                    if any(results['puntaje_exposicion'].values()):  # Solo si hay resultados
-                        puntajes = calcular_puntajes_acumulados(results)
-                    
                     # Dashboard de resultados con gráficos
                     col_grafico, col_metricas = st.columns([1, 1])
                     
@@ -807,12 +662,9 @@ with col_seleccion_y_evaluacion:
                             puntaje_izq = results['puntaje_exposicion']['izq']
                             nivel_izq = results['nivel_riesgo']['izq']
                             color_izq = "#10b981" if nivel_izq == "Bajo" else "#f59e0b" if nivel_izq == "Medio" else "#ef4444"
-                            nivel_accion_izq = get_nivel_accion(puntaje_izq)
                             
                             st.metric("Puntaje Exposición", f"{puntaje_izq:.2f}")
                             st.markdown(f'<div style="color: {color_izq}; font-weight: bold;">🎯 Riesgo: {nivel_izq}</div>', 
-                                       unsafe_allow_html=True)
-                            st.markdown(f'<div style="color: {color_izq}; font-weight: bold; font-size: 0.9rem;">📋 Nivel de acción: {nivel_accion_izq}</div>', 
                                        unsafe_allow_html=True)
                         
                         with col_der:
@@ -820,26 +672,10 @@ with col_seleccion_y_evaluacion:
                             puntaje_der = results['puntaje_exposicion']['der']
                             nivel_der = results['nivel_riesgo']['der']
                             color_der = "#10b981" if nivel_der == "Bajo" else "#f59e0b" if nivel_der == "Medio" else "#ef4444"
-                            nivel_accion_der = get_nivel_accion(puntaje_der)
                             
                             st.metric("Puntaje Exposición", f"{puntaje_der:.2f}")
                             st.markdown(f'<div style="color: {color_der}; font-weight: bold;">🎯 Riesgo: {nivel_der}</div>', 
                                        unsafe_allow_html=True)
-                            st.markdown(f'<div style="color: {color_der}; font-weight: bold; font-size: 0.9rem;">📋 Nivel de acción: {nivel_accion_der}</div>', 
-                                       unsafe_allow_html=True)
-                        
-                        # Explicación de niveles de acción
-                        st.markdown("---")
-                        st.markdown("##### 📋 **Niveles de Acción Explicados**")
-                        st.markdown("""
-                        <div style="background: #f8fafc; padding: 0.75rem; border-radius: 6px; font-size: 0.85rem;">
-                            <strong>0:</strong> No acción requerida<br>
-                            <strong>1:</strong> Puede ser necesaria alguna acción<br>
-                            <strong>2:</strong> Es necesaria alguna acción<br>
-                            <strong>3:</strong> Es necesaria acción pronto<br>
-                            <strong>4:</strong> Es necesaria acción inmediatamente
-                        </div>
-                        """, unsafe_allow_html=True)
                     
                     st.markdown("---")
 
@@ -884,15 +720,6 @@ with col_seleccion_y_evaluacion:
                         col_sub1, col_sub2 = st.columns(2)
                         col_sub1.metric("Subtotal A (Izq)", sub_a_izq)
                         col_sub2.metric("Subtotal A (Der)", sub_a_der)
-                        
-                        # 📈 Progreso después de completar Sección A
-                        if any(results['puntaje_exposicion'].values()) and max(sub_a_izq, sub_a_der) > 0:
-                            puntajes = calcular_puntajes_acumulados(results)
-                            mostrar_indicador_acumulado("A", 
-                                                      puntajes['secciones']['a']['izq'], 
-                                                      puntajes['secciones']['a']['der'],
-                                                      puntajes['acumulados']['a']['izq'], 
-                                                      puntajes['acumulados']['a']['der'])
 
                     with st.expander("💪 B. Fuerza", expanded=False):
                         st.markdown("##### Evaluación de Fuerza Aplicada")
@@ -931,15 +758,6 @@ with col_seleccion_y_evaluacion:
                         col_sub1, col_sub2 = st.columns(2)
                         col_sub1.metric("Subtotal B (Izq)", results['b']['izq']['puntaje'])
                         col_sub2.metric("Subtotal B (Der)", results['b']['der']['puntaje'])
-                        
-                        # 📈 Progreso después de completar Sección B
-                        if any(results['puntaje_exposicion'].values()) and max(results['b']['izq']['puntaje'], results['b']['der']['puntaje']) > 0:
-                            puntajes = calcular_puntajes_acumulados(results)
-                            mostrar_indicador_acumulado("B", 
-                                                      puntajes['secciones']['b']['izq'], 
-                                                      puntajes['secciones']['b']['der'],
-                                                      puntajes['acumulados']['ab']['izq'], 
-                                                      puntajes['acumulados']['ab']['der'])
 
                     with st.expander("🦴 C. Posturas Inadecuadas", expanded=False):
                         st.markdown("##### Evaluación Postural")
@@ -994,15 +812,6 @@ with col_seleccion_y_evaluacion:
                         col_sub1, col_sub2 = st.columns(2)
                         col_sub1.metric("Subtotal C (Izq)", sub_c_izq)
                         col_sub2.metric("Subtotal C (Der)", sub_c_der)
-                        
-                        # 📈 Progreso después de completar Sección C
-                        if any(results['puntaje_exposicion'].values()) and max(sub_c_izq, sub_c_der) > 0:
-                            puntajes = calcular_puntajes_acumulados(results)
-                            mostrar_indicador_acumulado("C", 
-                                                      puntajes['secciones']['c']['izq'], 
-                                                      puntajes['secciones']['c']['der'],
-                                                      puntajes['acumulados']['abc']['izq'], 
-                                                      puntajes['acumulados']['abc']['der'])
 
                     with st.expander("⚙️ D. Factores Adicionales", expanded=False):
                         st.markdown("##### Factores Complementarios")
@@ -1011,30 +820,28 @@ with col_seleccion_y_evaluacion:
                         opts_d2 = [f"{o['label']} (+{o['puntaje']})" for o in ART_OPTIONS['d2_ritmo']['opciones']]
                         opts_d4 = [f"{o['label']} (x{o['multiplicador']:.2f})" for o in ART_OPTIONS['d4_duracion']['opciones']]
                         
-                        # D1 y D2 en contenedores complementarios
                         col_d1, col_d2 = st.columns(2)
                         with col_d1:
-                            st.markdown('<div class="factor-complementario">', unsafe_allow_html=True)
                             st.selectbox(
                                 "D1. Pausas", 
                                 opts_d1, 
                                 key=f"d1_{nro}",
                                 help="Frecuencia y duración de las pausas"
                             )
-                            st.markdown('</div>', unsafe_allow_html=True)
-                            
-                        with col_d2:
-                            st.markdown('<div class="factor-complementario">', unsafe_allow_html=True)
                             st.selectbox(
                                 "D2. Ritmo de trabajo", 
                                 opts_d2, 
                                 key=f"d2_{nro}",
                                 help="Presión temporal en el trabajo"
                             )
-                            st.markdown('</div>', unsafe_allow_html=True)
+                        with col_d2:
+                            st.selectbox(
+                                "D4. Duración de la tarea", 
+                                opts_d4, 
+                                key=f"d4_duracion_{nro}",
+                                help="Tiempo total dedicado a la tarea"
+                            )
                         
-                        # D3 - Otros factores de riesgo
-                        st.markdown("---")
                         st.markdown("**D3. Otros factores de riesgo**")
                         col_d3_izq, col_d3_der = st.columns(2)
                         with col_d3_izq:
@@ -1052,46 +859,6 @@ with col_seleccion_y_evaluacion:
                                 help="Selecciona todos los factores que apliquen"
                             )
                         
-                        # D4 - Factor Multiplicador con estilo especial
-                        st.markdown("---")
-                        st.markdown("#### ⚠️ **FACTOR MULTIPLICADOR CRÍTICO**")
-                        st.markdown('<div class="factor-multiplicador">', unsafe_allow_html=True)
-                        st.markdown("##### 🔢 D4. Duración de la Tarea (MULTIPLICADOR FINAL)")
-                        
-                        d4_selected = st.selectbox(
-                            "Selecciona la duración total de la tarea", 
-                            opts_d4, 
-                            key=f"d4_duracion_{nro}",
-                            help="🚨 CRÍTICO: Este factor multiplica todo el puntaje de la tarea. Selecciona cuidadosamente."
-                        )
-                        
-                        # Mostrar explicación del multiplicador
-                        if d4_selected:
-                            multiplicador = float(d4_selected.split('(x')[1].split(')')[0])
-                            if multiplicador < 1.0:
-                                color = "#10b981"
-                                impacto = "REDUCE"
-                                emoji = "⬇️"
-                            elif multiplicador == 1.0:
-                                color = "#6b7280"
-                                impacto = "MANTIENE"
-                                emoji = "➡️"
-                            else:
-                                color = "#ef4444"
-                                impacto = "AUMENTA"
-                                emoji = "⬆️"
-                            
-                            st.markdown(f"""
-                            <div style="background: rgba(255,255,255,0.9); padding: 0.75rem; border-radius: 6px; margin: 0.5rem 0;">
-                                <strong style="color: {color};">{emoji} Este multiplicador {impacto} el puntaje final</strong><br>
-                                <small>Multiplicador: <strong>x{multiplicador}</strong></small>
-                            </div>
-                            """, unsafe_allow_html=True)
-                        
-                        st.markdown('</div>', unsafe_allow_html=True)
-                        
-                        # D5 - Factores Psicosociales
-                        st.markdown("---")
                         st.markdown("**D5. Factores Psicosociales**")
                         st.multiselect(
                             "Factores psicosociales presentes", 
@@ -1099,54 +866,12 @@ with col_seleccion_y_evaluacion:
                             key=f"d5_{nro}",
                             help="Factores del ambiente psicosocial que pueden influir en el riesgo"
                         )
-                        
-                        # 📈 Progreso después de completar Sección D
-                        if any(results['puntaje_exposicion'].values()):
-                            puntajes = calcular_puntajes_acumulados(results)
-                            
-                            # Mostrar progreso pre-multiplicador
-                            if max(puntajes['secciones']['d']['izq'], puntajes['secciones']['d']['der']) > 0:
-                                mostrar_indicador_acumulado("D", 
-                                                          puntajes['secciones']['d']['izq'], 
-                                                          puntajes['secciones']['d']['der'],
-                                                          puntajes['acumulados']['abcd']['izq'], 
-                                                          puntajes['acumulados']['abcd']['der'])
-                            
-                            # Efecto del multiplicador D4
-                            if puntajes['multiplicador'] > 1:
-                                st.markdown(f"""
-                                <div style="background: linear-gradient(90deg, #f59e0b15 0%, #ef444425 100%); 
-                                            border-left: 4px solid #f59e0b; padding: 0.75rem; border-radius: 6px; margin: 1rem 0;">
-                                    <div style="color: #92400e; font-weight: 600; margin-bottom: 0.25rem;">⚡ **MULTIPLICADOR D4 APLICADO**</div>
-                                    <div style="color: #78350f; font-size: 0.9rem;">
-                                        Factor: <strong>×{puntajes['multiplicador']}</strong> | 
-                                        Pre-mult: {max(puntajes['acumulados']['abcd']['izq'], puntajes['acumulados']['abcd']['der'])} → 
-                                        Post-mult: <strong>{max(puntajes['final']['izq'], puntajes['final']['der']):.1f}</strong>
-                                    </div>
-                                </div>
-                                """, unsafe_allow_html=True)
-                            
-                            # Resultado final
-                            if max(puntajes['final']['izq'], puntajes['final']['der']) > 0:
-                                mostrar_indicador_acumulado("FINAL", 0, 0, 
-                                                          puntajes['final']['izq'], 
-                                                          puntajes['final']['der'], 
-                                                          es_final=True)
 
-# Footer mejorado
-st.markdown("---")
-st.markdown(f"""
-<div style="text-align: center; padding: 2rem 0; background: #f8fafc; border-radius: 8px; margin-top: 2rem;">
-    <div style="margin-bottom: 1rem;">
-        <span style="font-size: 1.2rem;">🧬</span>
-        <strong style="color: #374151; margin-left: 0.5rem;">Sistema de Evaluación Ergonómica TMERT</strong>
-    </div>
-    <div style="color: #6b7280; font-size: 0.9rem; margin-bottom: 0.5rem;">
-        Desarrollado siguiendo los principios de <strong>ISO 9241-143</strong> para interfaces de usuario
-    </div>
-    <div style="color: #6b7280; font-size: 0.9rem;">
-        👨‍💻 <strong>Mauricio Andrés Reyes González</strong> - @profErgo | 
-        📅 Versión optimizada {datetime.now().strftime("%B %Y")}
-    </div>
-</div>
-""", unsafe_allow_html=True)
+    # Proceso de generación de informe
+    casos_seleccionados = st.session_state.get('casos_seleccionados', [])
+    datos_evaluador_completos = all(st.session_state.get(k) for k in ['numero_informe', 'nombre_ergonomo', 'rut_ergonomo', 'fecha_visita'])
+    
+    # Este botón se renderiza en la columna lateral
+    generar_btn = st.button("🚀 Generar Informe Word", type="primary", use_container_width=True, disabled=not (casos_seleccionados and datos_evaluador_completos), key="generar_informe_btn") if casos_seleccionados else False
+
+    if generar_btn:
